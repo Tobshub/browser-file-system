@@ -24,7 +24,7 @@ export type BrowserFSFile = FSNode & {
 /**  */
 type BrowserNode = BrowserFile | BrowserDir;
 
-/** BrowserFS instance */
+/** Creates a Browser File System instance */
 export class BrowserFS implements BrowserFSDir {
   private pathTo: string[];
   name: string;
