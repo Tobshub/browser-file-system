@@ -101,9 +101,16 @@ export class BrowserFS implements Dir {
     return item;
   }
 
-  setCurrentDir(pathTo: string) {
-    const path = this.normalisePath(pathTo);
-    this.pathTo = path;
+    const pathTo = this.normalisePath(path);
+    const item = this.getItemAtPath(pathTo.join("/"));
+
+    if (!item) {
+      throw new Error("directory does not exist");
+    }
+    if (item.type === "file") {
+      throw new Error("can't change active directory to a file");
+    }
+    this.pathTo = pathTo;
   }
 
   addChildren(path: string, children: (Dir | File)[]) {
