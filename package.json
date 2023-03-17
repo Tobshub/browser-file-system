@@ -1,6 +1,6 @@
 {
   "name": "@tobshub/browser-file-system",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "File system for your browser",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
@@ -11,15 +11,11 @@
     "build": "rollup -c"
   },
   "devDependencies": {
-    "@types/react": "^18.0.28",
     "esbuild": "^0.17.11",
     "rollup": "^3.19.1",
     "rollup-plugin-dts": "^5.2.0",
     "rollup-plugin-esbuild": "^5.0.0",
     "typescript": "^4.9.5"
-  },
-  "peerDependencies": {
-    "react": "^18.2.0"
   },
   "repository": {
     "url": "https://github.com/Tobshub/browser-file-system"
