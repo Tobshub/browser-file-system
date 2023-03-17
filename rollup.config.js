@@ -17,7 +17,7 @@ export default [
       {
         file: `${name}.js`,
         format: "es",
-        sourcemap: true,
+        sourcemap: false,
       },
     ],
   }),
@@ -29,4 +29,3 @@ export default [
     },
   }),
 ];
-
