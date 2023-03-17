@@ -1,5 +1,3 @@
-export {};
-
 interface FSNode {
   /**
    * The name of a node
@@ -16,8 +14,8 @@ interface FSNode {
   /* Directories and Files stored under the current node */
 }
 
-type Dir = FSNode & { type: "dir"; children: (Dir | File)[]; content?: null };
-type File = FSNode & {
+export type BrowserFSDir = FSNode & { type: "dir"; children: (BrowserFSDir | BrowserFSFile)[]; content?: null };
+export type BrowserFSFile = FSNode & {
   type: "file";
   children?: null;
   content: string | undefined;
@@ -27,7 +25,7 @@ type File = FSNode & {
 type BrowserNode = BrowserFile | BrowserDir;
 
 /** BrowserFS instance */
-export class BrowserFS implements Dir {
+export class BrowserFS implements BrowserFSDir {
   private pathTo: string[];
   name: string;
   type: "dir";
@@ -44,7 +42,7 @@ export class BrowserFS implements Dir {
   private init() {
     const existing = this.storage.getItem(this.key);
     if (existing) {
-      const root = JSON.parse(existing) as Dir;
+      const root = JSON.parse(existing) as BrowserFSDir;
       this.children = root.children.map((child) =>
         child.type === "dir" ? new BrowserDir(child.name, child.children) : new BrowserFile(child.name, child.content)
       );
@@ -97,6 +95,8 @@ export class BrowserFS implements Dir {
 
   /**
    * Takes a path to an item in the file system and returns that item if it is found
+   *
+   * Returns null if the item isn't found
    * @param pathTo - a relative or absolute path to an item in the file system
    * @returns the item at the end of the path or null if the item is not found
    */
@@ -141,7 +141,7 @@ export class BrowserFS implements Dir {
    * @param path - a relative or absolute path to a directory in the file system
    * @param children - an array of children to add to the item at the specified path
    */
-  addChildren(path: string, children: (Dir | File)[]) {
+  addChildren(path: string, children: (BrowserFSDir | BrowserFSFile)[]) {
     const item = this.getItemAtPath(path);
     if (!item) {
       throw new Error("folder does not exist");
@@ -184,10 +184,10 @@ export class BrowserFS implements Dir {
 /**
  * A node, in the BrowserFS instance, that can have children
  */
-class BrowserDir implements Dir {
+class BrowserDir implements BrowserFSDir {
   type: "dir";
   children: BrowserNode[];
-  constructor(public name: string, children: (Dir | File)[]) {
+  constructor(public name: string, children: (BrowserFSDir | BrowserFSFile)[]) {
     this.type = "dir";
     this.children = children.map((child) =>
       child.type === "dir" ? new BrowserDir(child.name, child.children) : new BrowserFile(child.name, child.content)
@@ -202,7 +202,7 @@ class BrowserDir implements Dir {
    * @param path - a relative or absolute path to a directory in the file system
    * @param children - an array of children to add to the item at the specified path
    */
-  addChildren(children: (Dir | File)[]) {
+  addChildren(children: (BrowserFSDir | BrowserFSFile)[]) {
     for (let newChild of children) {
       if (this.children.find((child) => child.name === newChild.name && child.type === newChild.type)) {
         throw new Error("item already exists");
@@ -230,7 +230,7 @@ class BrowserDir implements Dir {
 /**
  * A node, in the BrowserFS instance, that can have content
  */
-class BrowserFile implements File {
+class BrowserFile implements BrowserFSFile {
   type: "file";
   children: null;
   constructor(public name: string, public content: string | undefined) {
