@@ -47,7 +47,9 @@ export default class BrowserFS implements BrowserFSDir {
     const root = this.storage.get();
     if (root) {
       this.children = root.children.map((child) =>
-        child.type === "dir" ? new BrowserDir(child.name, child.children) : new BrowserFile(child.name, child.content)
+        child.type === "dir"
+          ? new BrowserDir(this, child.name, child.children)
+          : new BrowserFile(this, child.name, child.content)
       );
       return;
     }
@@ -55,7 +57,7 @@ export default class BrowserFS implements BrowserFSDir {
   }
 
   /** Save the current file system in the storage */
-  private save() {
+  save() {
     if (this.key) {
       this.storage.set(this);
     }
@@ -158,8 +160,8 @@ export default class BrowserFS implements BrowserFSDir {
       }
       item.children.push(
         newChild.type === "dir"
-          ? new BrowserDir(newChild.name, newChild.children)
-          : new BrowserFile(newChild.name, newChild.content)
+          ? new BrowserDir(this, newChild.name, newChild.children)
+          : new BrowserFile(this, newChild.name, newChild.content)
       );
     }
     this.save();
@@ -190,10 +192,16 @@ export default class BrowserFS implements BrowserFSDir {
 class BrowserDir implements BrowserFSDir {
   type: "dir";
   children: BrowserNode[];
-  constructor(public name: string, children: (BrowserFSDir | BrowserFSFile)[]) {
+  constructor(
+    private readonly parent: BrowserFS | BrowserDir,
+    public name: string,
+    children: (BrowserFSDir | BrowserFSFile)[]
+  ) {
     this.type = "dir";
     this.children = children.map((child) =>
-      child.type === "dir" ? new BrowserDir(child.name, child.children) : new BrowserFile(child.name, child.content)
+      child.type === "dir"
+        ? new BrowserDir(this, child.name, child.children)
+        : new BrowserFile(this, child.name, child.content)
     );
   }
 
@@ -212,8 +220,8 @@ class BrowserDir implements BrowserFSDir {
       }
       this.children.push(
         newChild.type === "dir"
-          ? new BrowserDir(newChild.name, newChild.children)
-          : new BrowserFile(newChild.name, newChild.content)
+          ? new BrowserDir(this, newChild.name, newChild.children)
+          : new BrowserFile(this, newChild.name, newChild.content)
       );
     }
   }
@@ -221,12 +229,26 @@ class BrowserDir implements BrowserFSDir {
   /**
    * Changes the name of the node
    *
+   * Throws an error is a sibling node exists with the new name and same node type
+   *
    * @param name - the new name to give to the node
    * @returns the new name of the node
    */
   rename(name: string) {
+    if (this.parent.children.find((child) => child.name === name && child.type === this.type)) {
+      throw new Error("item already exists");
+    }
     this.name = name;
     return name;
+  }
+
+  /**
+   * Calls the parent save function
+   *
+   * Stops when the root save function is called
+   * */
+  save() {
+    this.parent.save();
   }
 }
 
@@ -236,7 +258,11 @@ class BrowserDir implements BrowserFSDir {
 class BrowserFile implements BrowserFSFile {
   type: "file";
   children: null;
-  constructor(public name: string, public content: string | undefined) {
+  constructor(
+    private readonly parent: BrowserFS | BrowserDir,
+    public name: string,
+    public content: string | undefined
+  ) {
     this.type = "file";
     this.children = null;
   }
@@ -264,11 +290,25 @@ class BrowserFile implements BrowserFSFile {
   /**
    * Changes the name of the node
    *
+   * Throws an error is a sibling node exists with the new name and same node type
+   *
    * @param name - the new name to give to the node
    * @returns the new name of the node
    */
   rename(name: string) {
+    if (this.parent.children.find((child) => child.name === name && child.type === this.type)) {
+      throw new Error("item already exists");
+    }
     this.name = name;
     return name;
+  }
+
+  /**
+   * Calls the parent save function
+   *
+   * Stops when the root save function is called
+   * */
+  save() {
+    this.parent.save();
   }
 }
