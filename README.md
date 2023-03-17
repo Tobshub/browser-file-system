@@ -13,7 +13,7 @@ Browser File System is a simple file-system like storage for the browser. That's
 OR
 
 ```bash
- yarn install browser-fs
+ yarn add browser-fs
 ```
 
 ## Usage
