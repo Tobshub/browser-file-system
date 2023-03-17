@@ -1,6 +1,6 @@
 {
   "name": "@tobshub/browser-file-system",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "File system for your browser",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
@@ -38,5 +38,8 @@
   ],
   "files": [
     "./dist/*"
-  ]
+  ],
+  "dependencies": {
+    "localforage": "^1.10.0"
+  }
 }
