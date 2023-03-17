@@ -126,6 +126,16 @@ export class BrowserFS implements Dir {
     }
     this.save();
   }
+  removeItem(pathTo: string) {
+    const path = this.normalisePath(pathTo);
+    const name = path.pop();
+    const parentItem = this.getItemAtPath(path.join("/"));
+    if (!parentItem || parentItem.type === "file") {
+      throw new Error("item does not exist");
+    }
+    parentItem.children = parentItem.children.filter((child) => child.name !== name);
+    this.save();
+  }
 }
 
 class BrowserDir implements Dir {
