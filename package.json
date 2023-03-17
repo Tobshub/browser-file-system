@@ -1,6 +1,6 @@
 {
-  "name": "browser-fs",
-  "version": "0.0.1",
+  "name": "browser-file-system",
+  "version": "0.1.0",
   "description": "File system for your browser",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
@@ -22,7 +22,7 @@
     "react": "^18.2.0"
   },
   "repository": {
-    "url": ""
+    "url": "https://github.com/Tobshub/browser-file-system"
   },
   "exports": {
     ".": {
@@ -40,5 +40,7 @@
     "file",
     "system"
   ],
-  "files": ["./dist/*"]
+  "files": [
+    "./dist/*"
+  ]
 }
