@@ -1,3 +1,5 @@
+import Store from "./store";
+
 interface FSNode {
   /**
    * The name of a node
@@ -25,24 +27,25 @@ export type BrowserFSFile = FSNode & {
 type BrowserNode = BrowserFile | BrowserDir;
 
 /** Creates a Browser File System instance */
-export class BrowserFS implements BrowserFSDir {
+export default class BrowserFS implements BrowserFSDir {
   private pathTo: string[];
   name: string;
   type: "dir";
   children: BrowserNode[];
-  constructor(private readonly key: string, private readonly storage: Storage = localStorage) {
+  storage: Store<BrowserFSDir>;
+  constructor(private readonly key: string, storage?: "indexeddb" | "localstorage") {
     this.pathTo = [];
     this.name = "root";
     this.type = "dir";
     this.children = [];
+    this.storage = new Store(this, this.key, storage ? { driver: storage } : undefined);
     this.init();
   }
 
   /** Initialize BrowserFS or load existing data */
   private init() {
-    const existing = this.storage.getItem(this.key);
-    if (existing) {
-      const root = JSON.parse(existing) as BrowserFSDir;
+    const root = this.storage.get();
+    if (root) {
       this.children = root.children.map((child) =>
         child.type === "dir" ? new BrowserDir(child.name, child.children) : new BrowserFile(child.name, child.content)
       );
@@ -54,7 +57,7 @@ export class BrowserFS implements BrowserFSDir {
   /** Save the current file system in the storage */
   private save() {
     if (this.key) {
-      this.storage.setItem(this.key, JSON.stringify(this));
+      this.storage.set(this);
     }
   }
 
