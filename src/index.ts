@@ -23,14 +23,16 @@ type File = FSNode & {
   content: string | undefined;
 };
 
+/**  */
 type BrowserNode = BrowserFile | BrowserDir;
 
+/** BrowserFS instance */
 export class BrowserFS implements Dir {
   private pathTo: string[];
   name: string;
   type: "dir";
   children: BrowserNode[];
-  constructor(private readonly key: string) {
+  constructor(private readonly key: string, private readonly storage: Storage = localStorage) {
     this.pathTo = [];
     this.name = "root";
     this.type = "dir";
@@ -40,7 +42,7 @@ export class BrowserFS implements Dir {
 
   /** Initialize BrowserFS or load existing data */
   private init() {
-    const existing = localStorage.getItem(this.key);
+    const existing = this.storage.getItem(this.key);
     if (existing) {
       const root = JSON.parse(existing) as Dir;
       this.children = root.children.map((child) =>
@@ -51,12 +53,17 @@ export class BrowserFS implements Dir {
     this.save();
   }
 
+  /** Save the current file system in the storage */
   private save() {
     if (this.key) {
-      localStorage.setItem(this.key, JSON.stringify(this));
+      this.storage.setItem(this.key, JSON.stringify(this));
     }
   }
 
+  /**
+   * Takes a path (relative or absolute) to an item in the file system and returns an array of the absolute path to the input
+   * @returns an array containing moves to a specific directory
+   */
   private normalisePath(pathTo: string) {
     const path = pathTo.split("/");
     let absolutePath = [...this.pathTo];
@@ -83,12 +90,18 @@ export class BrowserFS implements Dir {
     return absolutePath;
   }
 
+  /** @returns the current active directory path */
   getCurrentPath() {
     return this.pathTo.join("/");
   }
 
-  getItemAtPath(pathTo: string) {
-    const path = this.normalisePath(pathTo);
+  /**
+   * Takes a path to an item in the file system and returns that item if it is found
+   * @param pathTo - a relative or absolute path to an item in the file system
+   * @returns the item at the end of the path or null if the item is not found
+   */
+  getItemAtPath(pathTo?: string) {
+    const path = this.normalisePath(pathTo ?? ".");
     let item: BrowserFS | BrowserNode | null = this;
 
     for (let move of path) {
@@ -101,6 +114,13 @@ export class BrowserFS implements Dir {
     return item;
   }
 
+  /**
+   * Takes a path to an directory in the file system and sets the `this.pathTo` to the absolute path of that directory
+   *
+   * Fails if the path points to a file or does not exist
+   * @param path - the relative or absolute path to the directory in the file system
+   * */
+  setCurrentDir(path: string) {
     const pathTo = this.normalisePath(path);
     const item = this.getItemAtPath(pathTo.join("/"));
 
@@ -113,13 +133,21 @@ export class BrowserFS implements Dir {
     this.pathTo = pathTo;
   }
 
+  /**
+   * Adds the children to the item at the provided path
+   *
+   * Throws an error if the item at the path does not exist or is a file
+   *
+   * @param path - a relative or absolute path to a directory in the file system
+   * @param children - an array of children to add to the item at the specified path
+   */
   addChildren(path: string, children: (Dir | File)[]) {
     const item = this.getItemAtPath(path);
     if (!item) {
       throw new Error("folder does not exist");
     }
     if (item.type === "file") {
-      throw new Error("cannot add children file");
+      throw new Error("can't add children file");
     }
     for (let newChild of children) {
       if (item.children.find((child) => child.name === newChild.name && child.type === newChild.type)) {
@@ -133,6 +161,14 @@ export class BrowserFS implements Dir {
     }
     this.save();
   }
+
+  /**
+   * Removes an item from the file system
+   *
+   * Throws an error if the item's parent does not exist
+   *
+   * @param pathTo - a relative or absolute path to an item in the file system
+   */
   removeItem(pathTo: string) {
     const path = this.normalisePath(pathTo);
     const name = path.pop();
@@ -145,6 +181,9 @@ export class BrowserFS implements Dir {
   }
 }
 
+/**
+ * A node, in the BrowserFS instance, that can have children
+ */
 class BrowserDir implements Dir {
   type: "dir";
   children: BrowserNode[];
@@ -155,6 +194,14 @@ class BrowserDir implements Dir {
     );
   }
 
+  /**
+   * Adds the children to the item at the provided path
+   *
+   * Throws an error if the item at the path does not exist or is a file
+   *
+   * @param path - a relative or absolute path to a directory in the file system
+   * @param children - an array of children to add to the item at the specified path
+   */
   addChildren(children: (Dir | File)[]) {
     for (let newChild of children) {
       if (this.children.find((child) => child.name === newChild.name && child.type === newChild.type)) {
@@ -168,12 +215,21 @@ class BrowserDir implements Dir {
     }
   }
 
+  /**
+   * Changes the name of the node
+   *
+   * @param name - the new name to give to the node
+   * @returns the new name of the node
+   */
   rename(name: string) {
     this.name = name;
     return name;
   }
 }
 
+/**
+ * A node, in the BrowserFS instance, that can have content
+ */
 class BrowserFile implements File {
   type: "file";
   children: null;
@@ -182,15 +238,32 @@ class BrowserFile implements File {
     this.children = null;
   }
 
+  /**
+   * Writes (or overwrites) the content on the node
+   *
+   * @param content set the content of the node
+   * @returns the new content
+   */
   write(content: string) {
     this.content = content;
     return content;
   }
 
+  /**
+   * Reads the content of the node
+   *
+   * @returns the content of the node
+   */
   read() {
     return this.content;
   }
 
+  /**
+   * Changes the name of the node
+   *
+   * @param name - the new name to give to the node
+   * @returns the new name of the node
+   */
   rename(name: string) {
     this.name = name;
     return name;
