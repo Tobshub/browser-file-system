@@ -1,0 +1,43 @@
+# BrowserFS - in-browser file system
+
+## Overview
+
+BrowserFS is a file-system like storage for the browser. That's it.
+
+## Installation
+
+```bash
+  npm install browser-fs
+```
+
+OR
+
+```bash
+ yarn install browser-fs
+```
+
+## Usage
+
+Create a new instance of BrowserFS.
+
+The instance requireds a key which should be unique across all created instances
+
+```js
+import { BrowserFS } from "browser-fs";
+
+const fs = new BrowserFS("browser-fs-key");
+```
+
+Creating a new instance of BrowserFS creates and save an `BrowserFSDir` object in the localStorage (by default).
+
+If an instance of BrowserFS has been saved with the key you provide, it will load that instance instead of creating a new one.
+
+If you want to make the storage more temporary, you can use sessionStorage instead by passing the `sessionStorage` object into the constructor as the second parameter.
+
+```js
+import { BrowserFS } from "browser-fs";
+
+const fs = new BrowserFS("browser-fs-key", sessionStorage);
+```
+
+The BrowserFS instance exposes several methods and properties that can be used to simulate a file system-like experience.
