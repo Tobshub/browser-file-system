@@ -1,0 +1,44 @@
+{
+  "name": "browser-fs",
+  "version": "0.0.1",
+  "description": "File system for your browser",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "type": "module",
+  "author": "Tobshub",
+  "license": "MIT",
+  "scripts": {
+    "build": "rollup -c"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.28",
+    "esbuild": "^0.17.11",
+    "rollup": "^3.19.1",
+    "rollup-plugin-dts": "^5.2.0",
+    "rollup-plugin-esbuild": "^5.0.0",
+    "typescript": "^4.9.5"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0"
+  },
+  "repository": {
+    "url": ""
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./dist/*": "./dist/*"
+  },
+  "engines": {
+    "node": ">=16",
+    "npm": ">=8"
+  },
+  "keywords": [
+    "browser",
+    "file",
+    "system"
+  ],
+  "files": ["./dist/*"]
+}

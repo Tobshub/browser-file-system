@@ -1,0 +1,8 @@
+{
+  "arrowParens": "always",
+  "bracketSpacing": true,
+  "cursorOffset": 0,
+  "printWidth": 120,
+  "semi": true,
+  "tabWidth": 2
+}
