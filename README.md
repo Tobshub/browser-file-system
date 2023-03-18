@@ -38,6 +38,8 @@ If you want to limit the storage of BrowserFS or simply prefer to use localStora
 const fs = new BrowserFS("localStorage-browser-fs-key", "localstorage");
 ```
 
+Although this is not recommended.
+
 After creating the instance of `BrowserFS`, it is important to call the asynchronous init method on instance:
 
 ```js
