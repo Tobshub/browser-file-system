@@ -103,7 +103,6 @@ export default class BrowserFS {
    */
   getItemAtPath(pathTo?: string): BrowserFSNode | BrowserFS | null {
     const path = this.normalisePath(pathTo ?? ".");
-    let parent: LeanBrowserFSNode | LeanBrowserFS = this;
     let item: LeanBrowserFSNode | LeanBrowserFS | null = this;
 
     for (let move of path) {
@@ -111,7 +110,6 @@ export default class BrowserFS {
         break;
       }
       const nextItem: LeanBrowserFSNode | null = item.children.find((child) => child.name === move) ?? null;
-      parent = item;
       item = nextItem;
     }
     return item
