@@ -103,6 +103,7 @@ export default class BrowserFS {
    */
   getItemAtPath(pathTo?: string): BrowserFSNode | BrowserFS | null {
     const path = this.normalisePath(pathTo ?? ".");
+    let parent: LeanBrowserFSNode | LeanBrowserFS = this;
     let item: LeanBrowserFSNode | LeanBrowserFS | null = this;
 
     for (let move of path) {
@@ -110,15 +111,39 @@ export default class BrowserFS {
         break;
       }
       const nextItem: LeanBrowserFSNode | null = item.children.find((child) => child.name === move) ?? null;
+      parent = item;
       item = nextItem;
     }
     return item
       ? item.type === "root"
         ? this
         : item.type === "dir"
-        ? new BrowserFSDir(this, item.name, item.children)
-        : new BrowserFSFile(this, item.name, item.content)
+        ? new BrowserFSDir(item.name, item.children, this)
+        : new BrowserFSFile(item.name, item.content, this)
       : null;
+  }
+
+  /**
+   * Takes a path to an item in the file system and returns that item if it is found
+   *
+   * Returns null if the item isn't found
+   * @param pathTo - a relative or absolute path to an item in the file system
+   * @returns the item at the end of the path or null if the item is not found
+   */
+  private getRawItemAtPath(pathTo?: string) {
+    const path = this.normalisePath(pathTo ?? ".");
+    let parent: LeanBrowserFSNode | LeanBrowserFS = this;
+    let item: LeanBrowserFSNode | LeanBrowserFS | null = this;
+
+    for (let move of path) {
+      if (!item || item.type === "file") {
+        break;
+      }
+      const nextItem: LeanBrowserFSNode | null = item.children.find((child) => child.name === move) ?? null;
+      parent = item;
+      item = nextItem;
+    }
+    return { item, parent };
   }
 
   /**
@@ -157,7 +182,7 @@ export default class BrowserFS {
       throw new Error("can't add children file");
     }
     for (let newChild of children) {
-      if (item.children.find((child) => child.name === newChild.name && child.type === newChild.type)) {
+      if (item.children.find((child) => child.name === newChild.name)) {
         throw new Error("item already exists");
       }
       item.children.push(newChild);
@@ -182,6 +207,20 @@ export default class BrowserFS {
     parentItem.children = parentItem.children.filter((child) => child.name !== name);
     await this.save();
   }
+
+  // TODO: check if pathTo is equal to or a child of the current path
+  // if it is, throw an error
+  async renameItem(pathTo: string, newName: string) {
+    const { parent, item } = this.getRawItemAtPath(pathTo);
+    if (!item) {
+      throw new Error("item does not exist");
+    }
+    if (parent.children.find((child) => child.name === newName)) {
+      throw new Error("item already exists");
+    }
+    item.name = newName;
+    await this.save();
+  }
 }
 
 /**
@@ -190,11 +229,7 @@ export default class BrowserFS {
 class BrowserFSDir implements LeanBrowserFSDir {
   type: "dir";
   children: LeanBrowserFSNode[];
-  constructor(
-    private readonly parent: (LeanBrowserFS | LeanBrowserFSDir) & { save(): void | Promise<void> },
-    public name: string,
-    children: (LeanBrowserFSDir | LeanBrowserFSFile)[]
-  ) {
+  constructor(public name: string, children: (LeanBrowserFSDir | LeanBrowserFSFile)[], private root: BrowserFS) {
     this.type = "dir";
     this.children = children;
   }
@@ -209,7 +244,7 @@ class BrowserFSDir implements LeanBrowserFSDir {
    */
   async addChildren(children: (LeanBrowserFSDir | LeanBrowserFSFile)[]) {
     for (let newChild of children) {
-      if (this.children.find((child) => child.name === newChild.name && child.type === newChild.type)) {
+      if (this.children.find((child) => child.name === newChild.name)) {
         throw new Error("item already exists");
       }
       this.children.push(newChild);
@@ -218,28 +253,12 @@ class BrowserFSDir implements LeanBrowserFSDir {
   }
 
   /**
-   * Changes the name of the node
-   *
-   * Throws an error is a sibling node exists with the new name and same node type
-   *
-   * @param name - the new name to give to the node
-   * @returns the new name of the node
-   */
-  rename(name: string) {
-    if (this.parent.children.find((child) => child.name === name && child.type === this.type)) {
-      throw new Error("item already exists");
-    }
-    this.name = name;
-    return name;
-  }
-
-  /**
    * Calls the parent save function
    *
    * Stops when the root save function is called
    * */
-  async save() {
-    await this.parent.save();
+  private async save() {
+    await this.root.save();
   }
 }
 
@@ -249,11 +268,7 @@ class BrowserFSDir implements LeanBrowserFSDir {
 class BrowserFSFile implements LeanBrowserFSFile {
   type: "file";
   children: null;
-  constructor(
-    private readonly parent: (LeanBrowserFS | LeanBrowserFSDir) & { save(): void | Promise<void> },
-    public name: string,
-    public content: string | undefined
-  ) {
+  constructor(public name: string, public content: string | undefined, private root: BrowserFS) {
     this.type = "file";
     this.children = null;
   }
@@ -280,28 +295,11 @@ class BrowserFSFile implements LeanBrowserFSFile {
   }
 
   /**
-   * Changes the name of the node
-   *
-   * Throws an error is a sibling node exists with the new name and same node type
-   *
-   * @param name - the new name to give to the node
-   * @returns the new name of the node
-   */
-  async rename(name: string) {
-    if (this.parent.children.find((child) => child.name === name && child.type === this.type)) {
-      throw new Error("item already exists");
-    }
-    this.name = name;
-    await this.save();
-    return name;
-  }
-
-  /**
    * Calls the parent save function
    *
    * Stops when the root save function is called
    * */
-  async save() {
-    await this.parent.save();
+  private async save() {
+    await this.root.save();
   }
 }
