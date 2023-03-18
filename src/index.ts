@@ -130,7 +130,7 @@ export default class BrowserFS {
    */
   private getRawItemAtPath(pathTo?: string) {
     const path = this.normalisePath(pathTo ?? ".");
-    let parent: LeanBrowserFSNode | LeanBrowserFS = this;
+    let parent: LeanBrowserFSNode | LeanBrowserFS | null = null;
     let item: LeanBrowserFSNode | LeanBrowserFS | null = this;
 
     for (let move of path) {
@@ -206,14 +206,28 @@ export default class BrowserFS {
     await this.save();
   }
 
-  // TODO: check if pathTo is equal to or a child of the current path
-  // if it is, throw an error
+  /** 
+    * Renames item at the given path
+    *
+    * Throws an error if the item is a direct or indirect parent of the current path
+    * Throws an error if the item is the root node or the BrowserFS instance
+    *
+    * @param {String} pathTo the path the item to rename
+    * @param {String} newName the new name to give the item
+  * */
   async renameItem(pathTo: string, newName: string) {
+    // make sure the item is not a parent of or is not the current active directory
+    if (this.getCurrentPath().startsWith(this.normalisePath(pathTo).join("/"))) {
+      throw new Error("cannot rename that item");
+    }
     const { parent, item } = this.getRawItemAtPath(pathTo);
     if (!item) {
       throw new Error("item does not exist");
     }
-    if (parent.children.find((child) => child.name === newName)) {
+    if (item.type === "root") {
+      throw new Error("can't rename root");
+    }
+    if (parent && parent.children.find((child) => child.name === newName)) {
       throw new Error("item already exists");
     }
     item.name = newName;
