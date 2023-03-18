@@ -16,51 +16,47 @@ interface FSNode {
   /* Directories and Files stored under the current node */
 }
 
-export type BrowserFSDir = FSNode & { type: "dir"; children: (BrowserFSDir | BrowserFSFile)[]; content?: null };
-export type BrowserFSFile = FSNode & {
+type LeanBrowserFSDir = FSNode & { type: "dir"; children: (LeanBrowserFSDir | LeanBrowserFSFile)[]; content?: null };
+type LeanBrowserFSFile = FSNode & {
   type: "file";
   children?: null;
   content: string | undefined;
 };
 
-/**  */
-type BrowserNode = BrowserFile | BrowserDir;
+/** Hydrated Node with methods */
+type BrowserFSNode = BrowserFSFile | BrowserFSDir;
+/** Lean Node without methods */
+export type LeanBrowserFSNode = LeanBrowserFSDir | LeanBrowserFSFile;
+type LeanBrowserFS = Pick<BrowserFS, "name" | "type" | "children">;
 
 /** Creates a Browser File System instance */
-export default class BrowserFS implements BrowserFSDir {
+export default class BrowserFS {
   private pathTo: string[];
   name: string;
-  type: "dir";
-  children: BrowserNode[];
-  storage: Store<BrowserFSDir>;
+  type: "root";
+  children: LeanBrowserFSNode[];
+  private storage: Store<LeanBrowserFS>;
   constructor(private readonly key: string, storage?: "indexeddb" | "localstorage") {
     this.pathTo = [];
     this.name = "root";
-    this.type = "dir";
+    this.type = "root";
     this.children = [];
     this.storage = new Store(this, this.key, storage ? { driver: storage } : undefined);
-    this.init();
   }
 
-  /** Initialize BrowserFS or load existing data */
-  private init() {
-    const root = this.storage.get();
+  /** Initialize BrowserFS or load existing data from storage */
+  public async init() {
+    const root = await this.storage.get();
     if (root) {
-      this.children = root.children.map((child) =>
-        child.type === "dir"
-          ? new BrowserDir(this, child.name, child.children)
-          : new BrowserFile(this, child.name, child.content)
-      );
+      this.children = root.children;
       return;
     }
     this.save();
   }
 
   /** Save the current file system in the storage */
-  save() {
-    if (this.key) {
-      this.storage.set(this);
-    }
+  async save() {
+    await this.storage.set({ children: this.children, name: this.name, type: this.type });
   }
 
   /**
@@ -105,18 +101,24 @@ export default class BrowserFS implements BrowserFSDir {
    * @param pathTo - a relative or absolute path to an item in the file system
    * @returns the item at the end of the path or null if the item is not found
    */
-  getItemAtPath(pathTo?: string) {
+  getItemAtPath(pathTo?: string): BrowserFSNode | BrowserFS | null {
     const path = this.normalisePath(pathTo ?? ".");
-    let item: BrowserFS | BrowserNode | null = this;
+    let item: LeanBrowserFSNode | LeanBrowserFS | null = this;
 
     for (let move of path) {
       if (!item || item.type === "file") {
         break;
       }
-      const nextItem: BrowserNode | null = item.children.find((child) => child.name === move) ?? null;
+      const nextItem: LeanBrowserFSNode | null = item.children.find((child) => child.name === move) ?? null;
       item = nextItem;
     }
-    return item;
+    return item
+      ? item.type === "root"
+        ? this
+        : item.type === "dir"
+        ? new BrowserFSDir(this, item.name, item.children)
+        : new BrowserFSFile(this, item.name, item.content)
+      : null;
   }
 
   /**
@@ -146,7 +148,7 @@ export default class BrowserFS implements BrowserFSDir {
    * @param path - a relative or absolute path to a directory in the file system
    * @param children - an array of children to add to the item at the specified path
    */
-  addChildren(path: string, children: (BrowserFSDir | BrowserFSFile)[]) {
+  async addChildren(path: string, children: (LeanBrowserFSDir | LeanBrowserFSFile)[]) {
     const item = this.getItemAtPath(path);
     if (!item) {
       throw new Error("folder does not exist");
@@ -158,13 +160,9 @@ export default class BrowserFS implements BrowserFSDir {
       if (item.children.find((child) => child.name === newChild.name && child.type === newChild.type)) {
         throw new Error("item already exists");
       }
-      item.children.push(
-        newChild.type === "dir"
-          ? new BrowserDir(this, newChild.name, newChild.children)
-          : new BrowserFile(this, newChild.name, newChild.content)
-      );
+      item.children.push(newChild);
     }
-    this.save();
+    await this.save();
   }
 
   /**
@@ -174,7 +172,7 @@ export default class BrowserFS implements BrowserFSDir {
    *
    * @param pathTo - a relative or absolute path to an item in the file system
    */
-  removeItem(pathTo: string) {
+  async removeItem(pathTo: string) {
     const path = this.normalisePath(pathTo);
     const name = path.pop();
     const parentItem = this.getItemAtPath(path.join("/"));
@@ -182,27 +180,23 @@ export default class BrowserFS implements BrowserFSDir {
       throw new Error("item does not exist");
     }
     parentItem.children = parentItem.children.filter((child) => child.name !== name);
-    this.save();
+    await this.save();
   }
 }
 
 /**
  * A node, in the BrowserFS instance, that can have children
  */
-class BrowserDir implements BrowserFSDir {
+class BrowserFSDir implements LeanBrowserFSDir {
   type: "dir";
-  children: BrowserNode[];
+  children: LeanBrowserFSNode[];
   constructor(
-    private readonly parent: BrowserFS | BrowserDir,
+    private readonly parent: (LeanBrowserFS | LeanBrowserFSDir) & { save(): void | Promise<void> },
     public name: string,
-    children: (BrowserFSDir | BrowserFSFile)[]
+    children: (LeanBrowserFSDir | LeanBrowserFSFile)[]
   ) {
     this.type = "dir";
-    this.children = children.map((child) =>
-      child.type === "dir"
-        ? new BrowserDir(this, child.name, child.children)
-        : new BrowserFile(this, child.name, child.content)
-    );
+    this.children = children;
   }
 
   /**
@@ -213,17 +207,14 @@ class BrowserDir implements BrowserFSDir {
    * @param path - a relative or absolute path to a directory in the file system
    * @param children - an array of children to add to the item at the specified path
    */
-  addChildren(children: (BrowserFSDir | BrowserFSFile)[]) {
+  async addChildren(children: (LeanBrowserFSDir | LeanBrowserFSFile)[]) {
     for (let newChild of children) {
       if (this.children.find((child) => child.name === newChild.name && child.type === newChild.type)) {
         throw new Error("item already exists");
       }
-      this.children.push(
-        newChild.type === "dir"
-          ? new BrowserDir(this, newChild.name, newChild.children)
-          : new BrowserFile(this, newChild.name, newChild.content)
-      );
+      this.children.push(newChild);
     }
+    await this.save();
   }
 
   /**
@@ -247,19 +238,19 @@ class BrowserDir implements BrowserFSDir {
    *
    * Stops when the root save function is called
    * */
-  save() {
-    this.parent.save();
+  async save() {
+    await this.parent.save();
   }
 }
 
 /**
  * A node, in the BrowserFS instance, that can have content
  */
-class BrowserFile implements BrowserFSFile {
+class BrowserFSFile implements LeanBrowserFSFile {
   type: "file";
   children: null;
   constructor(
-    private readonly parent: BrowserFS | BrowserDir,
+    private readonly parent: (LeanBrowserFS | LeanBrowserFSDir) & { save(): void | Promise<void> },
     public name: string,
     public content: string | undefined
   ) {
@@ -273,8 +264,9 @@ class BrowserFile implements BrowserFSFile {
    * @param content set the content of the node
    * @returns the new content
    */
-  write(content: string) {
+  async write(content: string) {
     this.content = content;
+    await this.save();
     return content;
   }
 
@@ -295,11 +287,12 @@ class BrowserFile implements BrowserFSFile {
    * @param name - the new name to give to the node
    * @returns the new name of the node
    */
-  rename(name: string) {
+  async rename(name: string) {
     if (this.parent.children.find((child) => child.name === name && child.type === this.type)) {
       throw new Error("item already exists");
     }
     this.name = name;
+    await this.save();
     return name;
   }
 
@@ -308,7 +301,7 @@ class BrowserFile implements BrowserFSFile {
    *
    * Stops when the root save function is called
    * */
-  save() {
-    this.parent.save();
+  async save() {
+    await this.parent.save();
   }
 }

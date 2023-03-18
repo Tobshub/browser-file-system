@@ -7,22 +7,26 @@ const storage = localforage.createInstance({
 
 export default class Store<V> {
   private storage: LocalForage;
-  constructor(value: V, private readonly key: string, options?: { driver: "indexeddb" | "localstorage" }) {
+  constructor(
+    value: V,
+    private readonly key: string,
+    private readonly options?: { driver: "indexeddb" | "localstorage" }
+  ) {
     this.storage = storage;
-    this.init(value, options);
+    this.init();
   }
 
-  private init(value: V, options?: { driver: "indexeddb" | "localstorage" }) {
-    if (!options || options.driver === "indexeddb") {
+  init() {
+    if (!this.options || this.options.driver === "indexeddb") {
       this.storage.config({ driver: INDEXEDDB });
     } else {
       this.storage.config({ driver: LOCALSTORAGE });
     }
-    this.set(value);
   }
 
-  get() {
-    return this.storage.getItem(this.key) as V;
+  async get() {
+    const value = (await this.storage.getItem(this.key)) as V;
+    return value;
   }
 
   set(value: V) {
