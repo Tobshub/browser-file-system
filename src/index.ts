@@ -101,10 +101,10 @@ export default class BrowserFS {
    * @param pathTo - a relative or absolute path to an item in the file system
    * @returns the item at the end of the path or null if the item is not found
    */
-  getItemAtPath(pathTo?: string): BrowserFSNode | BrowserFS | null {
+  getItemAtPath(pathTo?: string): {item: BrowserFSNode | BrowserFS | null, path: string[]} {
     const path = this.normalisePath(pathTo ?? ".");
     let item: LeanBrowserFSNode | LeanBrowserFS | null = this;
-
+    console.log({path, pathTo} )
     for (let move of path) {
       if (!item || item.type === "file") {
         break;
@@ -112,13 +112,13 @@ export default class BrowserFS {
       const nextItem: LeanBrowserFSNode | null = item.children.find((child) => child.name === move) ?? null;
       item = nextItem;
     }
-    return item
+    return {item: item
       ? item.type === "root"
         ? this
         : item.type === "dir"
         ? new BrowserFSDir(item.name, item.children, this)
         : new BrowserFSFile(item.name, item.content, this)
-      : null;
+      : null, path} 
   }
 
   /**
@@ -141,7 +141,7 @@ export default class BrowserFS {
       parent = item;
       item = nextItem;
     }
-    return { item, parent };
+    return { item, parent, path };
   }
 
   /**
@@ -151,9 +151,8 @@ export default class BrowserFS {
    * @param path - the relative or absolute path to the directory in the file system
    * */
   setCurrentDir(path: string) {
-    const pathTo = this.normalisePath(path);
-    const item = this.getItemAtPath(pathTo.join("/"));
-
+    const {item, path: pathTo }= this.getItemAtPath(path);
+    console.log({item})
     if (!item) {
       throw new Error("directory does not exist");
     }
@@ -172,7 +171,7 @@ export default class BrowserFS {
    * @param children - an array of children to add to the item at the specified path
    */
   async addChildren(path: string, children: (LeanBrowserFSDir | LeanBrowserFSFile)[]) {
-    const item = this.getItemAtPath(path);
+    const {item} = this.getItemAtPath(path);
     if (!item) {
       throw new Error("folder does not exist");
     }
@@ -198,7 +197,7 @@ export default class BrowserFS {
   async removeItem(pathTo: string) {
     const path = this.normalisePath(pathTo);
     const name = path.pop();
-    const parentItem = this.getItemAtPath(path.join("/"));
+    const {item: parentItem} = this.getItemAtPath(path.join("/"));
     if (!parentItem || parentItem.type === "file") {
       throw new Error("item does not exist");
     }
