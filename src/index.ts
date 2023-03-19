@@ -104,7 +104,6 @@ export default class BrowserFS {
   getItemAtPath(pathTo?: string): {item: BrowserFSNode | BrowserFS | null, path: string[]} {
     const path = this.normalisePath(pathTo ?? ".");
     let item: LeanBrowserFSNode | LeanBrowserFS | null = this;
-    console.log({path, pathTo} )
     for (let move of path) {
       if (!item || item.type === "file") {
         break;
@@ -152,7 +151,6 @@ export default class BrowserFS {
    * */
   setCurrentDir(path: string) {
     const {item, path: pathTo }= this.getItemAtPath(path);
-    console.log({item})
     if (!item) {
       throw new Error("directory does not exist");
     }
