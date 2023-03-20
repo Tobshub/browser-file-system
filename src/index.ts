@@ -129,7 +129,7 @@ export default class BrowserFS {
    */
   private getRawItemAtPath(pathTo?: string) {
     const path = this.normalisePath(pathTo ?? ".");
-    let parent: LeanBrowserFSNode | LeanBrowserFS | null = null;
+    let parent: LeanBrowserFSDir | LeanBrowserFS | null = null;
     let item: LeanBrowserFSNode | LeanBrowserFS | null = this;
 
     for (let move of path) {
@@ -193,13 +193,16 @@ export default class BrowserFS {
    * @param pathTo - a relative or absolute path to an item in the file system
    */
   async removeItem(pathTo: string) {
-    const path = this.normalisePath(pathTo);
-    const name = path.pop();
-    const {item: parentItem} = this.getItemAtPath(path.join("/"));
-    if (!parentItem || parentItem.type === "file") {
+    const {item, parent, path} = this.getRawItemAtPath(pathTo);
+    // parent should be non nullable so user can't remove the root
+    if (!item || !parent) {
       throw new Error("item does not exist");
     }
-    parentItem.children = parentItem.children.filter((child) => child.name !== name);
+    // make sure item is not a parent of or the current active directory
+    if (this.getCurrentPath().startsWith(path.join("/"))) {
+      throw new Error("can't remove that directory");
+    }
+    parent.children = parent.children.filter((child) => child.name !== item.name);
     await this.save();
   }
 
