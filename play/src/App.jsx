@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { ReactTerminal, TerminalContextProvider } from "react-terminal";
-import BrowserFS from "../../dist/index.js";
+import BrowserFS from "@tobshub/browser-file-system";
 
-const commands = (FS) =>
+const commands = (FS, updatePrompt) =>
   FS instanceof BrowserFS
     ? {
         echo: (...args) => args.join(" "),
@@ -12,13 +12,38 @@ const commands = (FS) =>
         },
         cd: async (path) => {
           FS.setCurrentDir(path && path.length ? path : ".");
+          updatePrompt();
         },
+        mkdir: async (pathTo) => {
+          try {
+            const path = pathTo.split("/");
+            const name = path.pop();
+            if (!name) {
+              throw new Error("can't make that directory");
+            }
+            const { item } = FS.getItemAtPath(path.join("/").length ? path.join("/") : ".");
+            if (!item || item.type === "file") {
+              throw new Error("can't create directory there");
+            }
+            item.type === "root"
+              ? await item.addChildren("/", [{ name, type: "dir", children: [] }])
+              : await item.addChildren([{ name, type: "dir", children: [] }]);
+          } catch (e) {
+            return e.message;
+          }
+        },
+        pwd: () => FS.getCurrentPath(),
       }
     : null;
 
 function App() {
-  const [FS] = useState(new BrowserFS("terminal-froggy-fs"));
+  const [FS] = useState(new BrowserFS("browserfs-playground"));
   const [isReady, setReady] = useState(false);
+  const [propmt, setPrompt] = useState("");
+
+  const updatePrompt = () => {
+    setPrompt(FS.getCurrentPath());
+  };
 
   useEffect(() => {
     FS.init().then(() => {
@@ -32,7 +57,7 @@ function App() {
         {isReady ? (
           <ReactTerminal
             theme="terminal-froggy"
-            prompt={`$`}
+            prompt={`~${propmt}$`}
             themes={{
               "terminal-froggy": {
                 themeBGColor: "#262626",
@@ -42,7 +67,7 @@ function App() {
               },
             }}
             showControlBar={false}
-            commands={commands(FS)}
+            commands={commands(FS, updatePrompt)}
           />
         ) : (
           <>Getting Ready...</>
