@@ -1,14 +1,23 @@
 import localforage, { INDEXEDDB, LOCALSTORAGE } from "localforage";
 
+/** Instance of LocalForage */
 const storage = localforage.createInstance({
   name: "browser-file-storage",
   description: "file storage for your browser",
 });
 
+/**
+* Wrapper for LocalForage
+*
+* It is initialized with a single key (that should be unique across all instances). 
+*
+* Each instance can only interact with the data saved under the initial key.
+*
+* Exposes `get` and `set` methods for the data under the key.
+ */
 export default class Store<V> {
   private storage: LocalForage;
   constructor(
-    value: V,
     private readonly key: string,
     private readonly options?: { driver: "indexeddb" | "localstorage" }
   ) {
@@ -16,7 +25,7 @@ export default class Store<V> {
     this.init();
   }
 
-  init() {
+  private init() {
     if (!this.options || this.options.driver === "indexeddb") {
       this.storage.config({ driver: INDEXEDDB });
     } else {
@@ -24,9 +33,8 @@ export default class Store<V> {
     }
   }
 
-  async get() {
-    const value = (await this.storage.getItem(this.key)) as V;
-    return value;
+  get() {
+    return this.storage.getItem(this.key) as Promise<V>
   }
 
   set(value: V) {

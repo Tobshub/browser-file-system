@@ -41,7 +41,7 @@ export default class BrowserFS {
     this.name = "root";
     this.type = "root";
     this.children = [];
-    this.storage = new Store(this, this.key, storage ? { driver: storage } : undefined);
+    this.storage = new Store(this.key, storage ? { driver: storage } : undefined);
   }
 
   /** Initialize BrowserFS or load existing data from storage */
@@ -233,6 +233,7 @@ export default class BrowserFS {
     item.name = newName;
     await this.save();
   }
+  // TODO: moveItem function
 }
 
 /**
