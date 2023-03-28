@@ -33,6 +33,28 @@ const commands = (FS, updatePrompt) =>
           }
         },
         pwd: () => FS.getCurrentPath(),
+        rmdir: async (pathTo) => {
+          try {
+            const { item } = FS.getItemAtPath(pathTo);
+            if (!item || item.type === "file") {
+              throw new Error("directory does not exist");
+            }
+            if (item.children.length) {
+              throw new Error("directory is not empty");
+            }
+            await FS.removeItem(pathTo);
+          } catch (err) {
+            return err.message;
+          }
+        },
+        mv: async (args0) => {
+          try {
+            const [pathTo, newPathTo] = args0.split(" ");
+            await FS.moveItem(pathTo, newPathTo, { moveType: "move" });
+          } catch (err) {
+            return err.message;
+          }
+        },
       }
     : null;
 

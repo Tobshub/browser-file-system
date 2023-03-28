@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@tobshub/browser-file-system": "^1.2.2",
+    "@tobshub/browser-file-system": "^1.3.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-terminal": "^1.3.1"
