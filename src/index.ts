@@ -101,7 +101,7 @@ export default class BrowserFS {
    * @param pathTo - a relative or absolute path to an item in the file system
    * @returns the item at the end of the path or null if the item is not found
    */
-  getItemAtPath(pathTo?: string): {item: BrowserFSNode | BrowserFS | null, path: string[]} {
+  getItemAtPath(pathTo?: string): { item: BrowserFSNode | BrowserFS | null; path: string[] } {
     const path = this.normalisePath(pathTo ?? ".");
     let item: LeanBrowserFSNode | LeanBrowserFS | null = this;
     for (let move of path) {
@@ -111,13 +111,16 @@ export default class BrowserFS {
       const nextItem: LeanBrowserFSNode | null = item.children.find((child) => child.name === move) ?? null;
       item = nextItem;
     }
-    return {item: item
-      ? item.type === "root"
-        ? this
-        : item.type === "dir"
-        ? new BrowserFSDir(item.name, item.children, this)
-        : new BrowserFSFile(item.name, item.content, this)
-      : null, path} 
+    return {
+      item: item
+        ? item.type === "root"
+          ? this
+          : item.type === "dir"
+          ? new BrowserFSDir(item.name, item.children, this)
+          : new BrowserFSFile(item.name, item.content, this)
+        : null,
+      path,
+    };
   }
 
   /**
@@ -150,7 +153,7 @@ export default class BrowserFS {
    * @param path - the relative or absolute path to the directory in the file system
    * */
   setCurrentDir(path: string) {
-    const {item, path: pathTo }= this.getItemAtPath(path);
+    const { item, path: pathTo } = this.getItemAtPath(path);
     if (!item) {
       throw new Error("directory does not exist");
     }
@@ -169,7 +172,7 @@ export default class BrowserFS {
    * @param children - an array of children to add to the item at the specified path
    */
   async addChildren(path: string, children: (LeanBrowserFSDir | LeanBrowserFSFile)[]) {
-    const {item} = this.getItemAtPath(path);
+    const { item } = this.getItemAtPath(path);
     if (!item) {
       throw new Error("folder does not exist");
     }
@@ -193,7 +196,7 @@ export default class BrowserFS {
    * @param pathTo - a relative or absolute path to an item in the file system
    */
   async removeItem(pathTo: string) {
-    const {item, parent, path} = this.getRawItemAtPath(pathTo);
+    const { item, parent, path } = this.getRawItemAtPath(pathTo);
     // parent should be non nullable so user can't remove the root
     if (!item || !parent) {
       throw new Error("item does not exist");
@@ -206,15 +209,15 @@ export default class BrowserFS {
     await this.save();
   }
 
-  /** 
-    * Renames item at the given path
-    *
-    * Throws an error if the item is a direct or indirect parent of the current path
-    * Throws an error if the item is the root node or the BrowserFS instance
-    *
-    * @param {String} pathTo the path the item to rename
-    * @param {String} newName the new name to give the item
-  * */
+  /**
+   * Renames item at the given path
+   *
+   * Throws an error if the item is a direct or indirect parent of the current path
+   * Throws an error if the item is the root node or the BrowserFS instance
+   *
+   * @param {String} pathTo the path the item to rename
+   * @param {String} newName the new name to give the item
+   * */
   async renameItem(pathTo: string, newName: string) {
     // make sure the item is not a parent of or is not the current active directory
     if (this.getCurrentPath().startsWith(this.normalisePath(pathTo).join("/"))) {
@@ -233,7 +236,43 @@ export default class BrowserFS {
     item.name = newName;
     await this.save();
   }
-  // TODO: moveItem function
+  /**
+   * Move an item at `pathTo` to `newParentPath`
+   *
+   * Copies the item and leaves the original by default
+   *
+   * The name of the item stays the same unless `newName` is provided
+   * @param {String} pathTo the path to the the item
+   * @param {String} newParentPath the parent path of the new location
+   * @param {Object} options (optional) options to change the type of move, e.g. full move/copy or new name
+   * */
+  async moveItem(pathTo: string, newParentPath: string, options?: { moveType?: "move" | "copy"; newName?: string }) {
+    // make sure the item is not a parent of or is not the current active directory
+    if (this.getCurrentPath().startsWith(this.normalisePath(pathTo).join("/"))) {
+      throw new Error("cannot move that item");
+    }
+    const { item, parent: oldParent } = this.getRawItemAtPath(pathTo);
+    if (!item || !oldParent) {
+      throw new Error("item not found");
+    }
+    if (item.type === "root") {
+      throw new Error("can't move the root directory");
+    }
+    const { item: newParent } = this.getItemAtPath(newParentPath);
+    if (!newParent || newParent.type === "file") {
+      throw new Error("can't move item to specified path");
+    }
+    if (newParent.type === "dir") {
+      await newParent.addChildren([{ ...item, name: options?.newName ? options.newName : item.name }]);
+    }
+
+    // if moveType option is move, do a full move and delete the original item
+    if (options && options.moveType === "move") {
+      oldParent.children = oldParent.children.filter((child) => child.name !== item.name);
+    }
+
+    await this.save();
+  }
 }
 
 /**
