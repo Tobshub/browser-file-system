@@ -106,7 +106,7 @@ export default class BrowserFS {
     let item: LeanBrowserFSNode | LeanBrowserFS | null = this;
     for (let move of path) {
       if (!item || item.type === "file") {
-        break;
+        throw new Error("item doesn't exist")
       }
       const nextItem: LeanBrowserFSNode | null = item.children.find((child) => child.name === move) ?? null;
       item = nextItem;
@@ -137,7 +137,7 @@ export default class BrowserFS {
 
     for (let move of path) {
       if (!item || item.type === "file") {
-        break;
+        throw new Error("path does not exist")
       }
       const nextItem: LeanBrowserFSNode | null = item.children.find((child) => child.name === move) ?? null;
       parent = item;
