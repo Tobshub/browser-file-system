@@ -244,9 +244,9 @@ export default class BrowserFS {
    * The name of the item stays the same unless `newName` is provided
    * @param {String} pathTo the path to the the item
    * @param {String} newParentPath the parent path of the new location
-   * @param {Object} options (optional) options to change the type of move, e.g. full move/copy or new name
+   * @param {Object} options (optional) options to change the type of move, e.g. full move/copy
    * */
-  async moveItem(pathTo: string, newParentPath: string, options?: { moveType?: "move" | "copy"; newName?: string }) {
+  async moveItem(pathTo: string, newParentPath: string, options?: { moveType?: "move" | "copy" }) {
     // make sure the item is not a parent of or is not the current active directory
     if (this.getCurrentPath().startsWith(this.normalisePath(pathTo).join("/"))) {
       throw new Error("cannot move that item");
@@ -258,17 +258,28 @@ export default class BrowserFS {
     if (item.type === "root") {
       throw new Error("can't move the root directory");
     }
-    const { item: newParent } = this.getItemAtPath(newParentPath);
-    if (!newParent || newParent.type === "file") {
+    const { item: newItem, parent: newParent, path: newPath } = this.getRawItemAtPath(newParentPath);
+    if (!newParent && newItem?.type !== "root") {
       throw new Error("can't move item to specified path");
     }
-    if (newParent.type === "dir") {
-      await newParent.addChildren([{ ...item, name: options?.newName ? options.newName : item.name }]);
+
+    if (!newItem && newParent) {
+      const name = newPath.pop();
+      const parent = new BrowserFSDir(newParent.name, newParent.children, this);
+      await parent.addChildren([{ ...item, name: name as string }]);
+    } else if (newItem) {
+      if (newItem.type === "file") {
+        throw new Error("item already exists at that path.");
+      }
+      const newItemParent = new BrowserFSDir(newItem.name, newItem.children, this);
+      await newItemParent.addChildren([{...item}])
+    } else {
+      throw new Error('Error: unknown');
     }
 
     // if moveType option is move, do a full move and delete the original item
     if (options && options.moveType === "move") {
-      oldParent.children = oldParent.children.filter((child) => child.name !== item.name);
+      await this.removeItem(pathTo)
     }
 
     await this.save();
