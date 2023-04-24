@@ -79,7 +79,7 @@ function App() {
         {isReady ? (
           <ReactTerminal
             theme="terminal-froggy"
-            prompt={`~${propmt}$`}
+            prompt={`~/${propmt}$`}
             themes={{
               "terminal-froggy": {
                 themeBGColor: "#262626",
